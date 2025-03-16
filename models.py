@@ -28,7 +28,7 @@ class SVGD:
     def _phistar(self, particles):
         kernel = self.kernel(particles)
         score = self.score(particles)
-        # minus due the derivative regarding the second variable
+        # minus due to the derivative regarding the second variable
         grad_kernel = - 0.5 * torch.autograd.grad(kernel.sum(), particles)[0]
         K_T = kernel.permute(*torch.arange(kernel.ndim - 1, -1, -1))
         phi = (torch.matmul(K_T, score) + grad_kernel)/particles.shape[0]
