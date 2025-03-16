@@ -6,47 +6,31 @@ class SVGD:
         self.step_size = step_size
         self.kernel_name = kernel_name
 
-    def kernel(self, x, y):
+    def kernel(self, particles):
+        XX = torch.nn.PairwiseDistance(p=2)(particles, particles)
+        return torch.exp(-XX)
 
-        if self.kernel_name == 'RBF':
-            l = 1
-            return torch.exp(-torch.norm(x-y)**2/l)
-
-    def sample(self, n : int, d : int, P):
+    def sample(self, n: int, d: int, P):
         self.P = P
-        particules = torch.randn(n, d).requires_grad_()
+        particles = torch.randn(n, d).requires_grad_()
+        for _ in range(self.n_iter):
+            particles = self.step(particles, self.step_size)
+        return particles
 
+    def step(self, particles, step_size):
+        return particles + step_size * self._phistar(particles)
 
-        for i in range(self.n_iter):
-            print('iteration:', i)
-            new_particules = torch.zeros_like(particules)
-            c = 0
-            for x in particules:
-
-                x = self.step(x, particules, self.step_size)
-                new_particules[c] = x
-                c += 1
-
-            particules = new_particules
-
-        return particules
-
-    def step(self, x, particules, step_size):
-
-        return x + step_size * self._phistar(x, particules)
-
-    def grad_kernel(self, x, y):
-        return -2 * (x-y) * torch.exp(-torch.norm(x-y)**2)
-
-    def score(self, x):
-        log_prob = self.P.log_prob(x)
-        score = torch.autograd.grad(log_prob, x)[0]
+    def score(self, particles):
+        log_prob = self.P.log_prob(particles)
+        score = torch.autograd.grad(log_prob.sum(), particles)[0]
         return score
 
-    def _phistar(self, x, particules):
-        val = 0
-        for x_j in particules:
-            kernel_val = self.kernel(x_j, x)
-            grad_kernel_val = self.grad_kernel(x_j, x)
-            val += kernel_val * self.score(x_j) + grad_kernel_val
-        return val/particules.shape[0]
+    def _phistar(self, particles):
+        kernel = self.kernel(particles)
+        score = self.score(particles)
+        # minus due the derivative regarding the second variable
+        grad_kernel = - 0.5 * torch.autograd.grad(kernel.sum(), particles)[0]
+        K_T = kernel.permute(*torch.arange(kernel.ndim - 1, -1, -1))
+        phi = (torch.matmul(K_T, score) + grad_kernel)/particles.shape[0]
+
+        return phi
