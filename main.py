@@ -3,6 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 from torch.distributions import Normal, Categorical
 from torch.distributions.mixture_same_family import MixtureSameFamily
+from torch.utils.data import DataLoader
 
 device = 'mps'
 

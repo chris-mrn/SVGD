@@ -1,11 +1,12 @@
 import torch
 import matplotlib.pyplot as plt
-import numpy as np
+from torch.utils.data import DataLoader
 class SVGD:
-    def __init__(self, n_iter=100, kernel_name='RBF', step_size=1):
+    def __init__(self, n_iter=100, kernel_name='RBF', step_size=1, optimizer='SGD'):
         self.n_iter = n_iter
         self.step_size = step_size
         self.kernel_name = kernel_name
+
 
     def kernel(self, particles):
         # Compute the pairwise squared Euclidean distance matrix
@@ -24,14 +25,21 @@ class SVGD:
 
     def sample(self, n: int, d: int, P):
         self.P = P
-        particles = torch.randn(n, d).requires_grad_()
+        particles = torch.randn(n, d, requires_grad=True)
+
+        optimizer = torch.optim.SGD([particles], lr=0.1, momentum=0.9)
+
         for i in range(self.n_iter):
             print(f'Iteration {i}')
-            particles = self.step(particles, self.step_size)
-        return particles
+            optimizer.zero_grad()
 
-    def step(self, particles, step_size):
-        return particles + step_size * self._phistar(particles)
+            # move in the opposite side of the grad
+            particles.grad = -self._phistar(particles)
+            optimizer.step()
+
+            particles.grad = None
+
+        return particles
 
     def score(self, particles):
         log_prob = self.P.log_prob(particles)
