@@ -1,19 +1,41 @@
 import torch
-
+import matplotlib.pyplot as plt
+import numpy as np
 class SVGD:
-    def __init__(self, n_iter=100, kernel_name='RBF', step_size=0.1):
+    def __init__(self, n_iter=100, kernel_name='RBF', step_size=1):
         self.n_iter = n_iter
         self.step_size = step_size
         self.kernel_name = kernel_name
 
+    def median(self, tensor):
+        """
+        torch.median() acts differently from np.median(). We want to simulate numpy implementation.
+        """
+        tensor = tensor.detach().flatten()
+        tensor_max = tensor.max()[None]
+
+        return (torch.cat((tensor, tensor_max)).median() + tensor.median()) / 2.
+
     def kernel(self, particles):
-        XX = torch.nn.PairwiseDistance(p=2)(particles, particles)
-        return torch.exp(-XX)
+        # Compute the pairwise squared Euclidean distance matrix
+        
+        # Step 1: Compute the pairwise differences
+        X_expanded = particles.unsqueeze(0)  # Shape becomes [1, n, d]
+        X_transposed = particles.unsqueeze(1)  # Shape becomes [n, 1, d]
+
+        # Step 2: Calculate the squared differences
+        squared_diff = (X_expanded - X_transposed) ** 2
+
+        # Step 3: Sum along the feature dimension (d)
+        D = squared_diff.sum(dim=2)  # Shape becomes [n, n]
+
+        return torch.exp(-D)
 
     def sample(self, n: int, d: int, P):
         self.P = P
         particles = torch.randn(n, d).requires_grad_()
-        for _ in range(self.n_iter):
+        for i in range(self.n_iter):
+            print(f'Iteration {i}')
             particles = self.step(particles, self.step_size)
         return particles
 
