@@ -7,18 +7,9 @@ class SVGD:
         self.step_size = step_size
         self.kernel_name = kernel_name
 
-    def median(self, tensor):
-        """
-        torch.median() acts differently from np.median(). We want to simulate numpy implementation.
-        """
-        tensor = tensor.detach().flatten()
-        tensor_max = tensor.max()[None]
-
-        return (torch.cat((tensor, tensor_max)).median() + tensor.median()) / 2.
-
     def kernel(self, particles):
         # Compute the pairwise squared Euclidean distance matrix
-        
+
         # Step 1: Compute the pairwise differences
         X_expanded = particles.unsqueeze(0)  # Shape becomes [1, n, d]
         X_transposed = particles.unsqueeze(1)  # Shape becomes [n, 1, d]
