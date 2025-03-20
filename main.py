@@ -1,32 +1,48 @@
-from models import SVGD
+from models import SVGD, NCSN, MLP2D
 import torch
 import matplotlib.pyplot as plt
-from torch.distributions import Normal, Categorical
+from torch.distributions import Normal, Categorical, Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
-from torch.utils.data import DataLoader
 
 device = 'mps'
 
-model = SVGD(n_iter=500)
+# Dataset
 
-mean =  torch.Tensor([-2, 3])
-covariance_matrix = 5 * torch.Tensor([[0.2260, 0.1652],[0.1652, 0.6779]])
+means = torch.tensor([[0., 0.], [5., 5.]])
+stds = torch.rand(2, 2)
 
-P_gauss = torch.distributions.MultivariateNormal(mean, covariance_matrix=covariance_matrix)
+mix = Categorical(torch.ones(2,))
+comp = Independent(Normal(means, stds), 1)
+gmm = MixtureSameFamily(mix, comp)
 
-mix = Categorical(torch.tensor([1/3, 2/3]))
-comp = Normal(torch.tensor([-10., 9.]), torch.tensor([1., 1.]))
-P_mix = MixtureSameFamily(mix, comp)
-P = torch.distributions.Normal(torch.Tensor([3]), torch.Tensor([5]))
+N_samples = 1000
+true_samples = gmm.sample((N_samples,)).detach().numpy()  # generate  samples
 
-samples = model.sample(1000, 1, P_mix).detach().numpy()
+# Model
 
-true_samples = P_mix.sample((1000,)).detach().numpy()
+# SVGD
+model_SVGD = SVGD(n_iter=100)
 
-fig, axs = plt.subplots(1, 2, sharey=True, tight_layout=True)
+# NCSN
+net = MLP2D(hidden_dim=32, num_layers=4)
+optimizer = torch.optim.Adam(net.parameters(), lr=1e-2)
 
-# We can set the number of bins with the *bins* keyword argument.
-axs[0].hist(samples, bins=20)
-axs[1].hist(true_samples, bins=20)
+model_NCSN = NCSN(net, L=20)
+model_NCSN.train(optimizer, 150, true_samples)
 
-plt.show()
+# Generate samples
+gen_SVGD_samples = model_SVGD.sample(gmm).detach().numpy()
+gen_NCSN_samples = model_NCSN.sample()
+
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+ax.scatter(true_samples[:, 0], true_samples[:, 1], alpha=0.6)
+ax.scatter(gen_NCSN_samples[:, 0], gen_NCSN_samples[:, 1], alpha=0.6)
+ax.scatter(gen_SVGD_samples[:, 0], gen_SVGD_samples[:, 1], alpha=0.6)
+ax.grid(False)
+ax.set_aspect('equal', adjustable='box')
+strtitle = "True and generated samples"
+ax.set_title(strtitle)
+ax.legend(['True samples', 'NCSN samples', 'SVGD samples'])
+plt.savefig('target_reference_datasets.pdf', format="pdf")
