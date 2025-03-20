@@ -1,125 +1,76 @@
 import torch
-import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
 import numpy as np
-import torch.nn.functional as F
-from scipy.stats import gaussian_kde
-from tqdm.notebook import tqdm
 import torch.nn as nn
-
 
 
 class SVGD:
     def __init__(self, n_iter=100, kernel_name='RBF', step_size=1, optimizer='SGD', batch_size=32):
+        """
+        Initializes the SVGD object with the number of iterations, kernel type, step size,
+        optimizer type, and batch size.
+        """
         self.n_iter = n_iter
         self.step_size = step_size
         self.kernel_name = kernel_name
         self.batch_size = batch_size
 
     def kernel(self, particles):
-        # Compute the pairwise squared Euclidean distance matrix
-
-        # Step 1: Compute the pairwise differences
-        X_expanded = particles.unsqueeze(0)  # Shape becomes [1, n, d]
-        X_transposed = particles.unsqueeze(1)  # Shape becomes [n, 1, d]
-
-        # Step 2: Calculate the squared differences
+        """
+        Computes the kernel matrix using pairwise squared Euclidean distances.
+        """
+        X_expanded = particles.unsqueeze(0)
+        X_transposed = particles.unsqueeze(1)
         squared_diff = (X_expanded - X_transposed) ** 2
+        D = squared_diff.sum(dim=2)
 
-        # Step 3: Sum along the feature dimension (d)
-        h = torch.mean(particles)
-        h_scaled = h.detach().numpy() / np.log(self.n)
-        D = squared_diff.sum(dim=2)  # Shape becomes [n, n]
-
-        h_scaled = 1
+        n = particles.shape[0]
+        h = torch.median(squared_diff)
+        h_scaled = h / np.log(n)
 
         return torch.exp(-D / h_scaled)
 
-    def sample(self, P, n=1000, d=2):
+    def sample(self, P, n=250, d=2):
+        """
+        Samples from the distribution P using SVGD optimization.
+        """
         self.P = P
         self.n = n
         particles = torch.randn(n, d, requires_grad=True)
-        true_particles = P.sample((n,))
 
         optimizer = torch.optim.Adam([particles], lr=0.1)
-        list_KL = []
 
-        x_hist = torch.zeros(self.n_iter+1, *particles.shape)
+        x_hist = torch.zeros(self.n_iter + 1, *particles.shape)
         x_hist[0] = particles
 
         for i in range(self.n_iter):
-            print(f'Iteration{i}')
+            print(f'Iteration {i}')
             optimizer.zero_grad()
-            # move in the opposite side of the grad
             particles.grad = -self._phistar(particles)
             optimizer.step()
             particles.grad = None
 
-            if i % 30 == -1 :
-                self.plot_kde(particles.squeeze(1), true_particles, i)
-            KL = self.kl_divergence_kde(particles.unsqueeze(1), true_particles.unsqueeze(1))
-            list_KL.append(KL.detach().numpy())
-            x_hist[i+1] = particles
-
-        plt.plot(list_KL)
-        plt.show()
+            x_hist[i + 1] = particles
 
         return particles, x_hist
 
     def score(self, particles):
+        """
+        Computes the score function (gradient of log probability).
+        """
         log_prob = self.P.log_prob(particles)
         score = torch.autograd.grad(log_prob.sum(), particles)[0]
         return score
 
-    def kde_log_prob(self, samples, query_points, bandwidth=0.1):
-        """Compute log density estimation via KDE."""
-        dists = torch.cdist(query_points, samples)  # Compute pairwise distances
-        kernel_vals = torch.exp(-0.5 * (dists / bandwidth) ** 2)  # Gaussian Kernel
-        density = kernel_vals.mean(dim=1) / (bandwidth * (2 * torch.pi) ** 0.5)
-        return torch.log(density + 1e-8)  # Avoid log(0)
-
-    def kl_divergence_kde(self, p_samples, q_samples, bandwidth=0.1):
-        """Compute KL divergence between two sets of particles using KDE."""
-        log_p = self.kde_log_prob(p_samples, p_samples, bandwidth)  # log p(x)
-        log_q = self.kde_log_prob(q_samples, p_samples, bandwidth)  # log q(x)
-        return torch.mean(log_p - log_q)  # KL divergence
-
-    def plot_kde(self, f_particles, f_true_particles, step):
-        """Plots the KDE estimation of given particles."""
-
-        # Convert PyTorch tensors to NumPy arrays
-        f_particles = f_particles.detach().numpy()
-        f_true_particles = f_true_particles.detach().numpy()
-
-        # Define grid for KDE evaluation
-        x_min, x_max = min(f_particles.min(), f_true_particles.min()), max(f_particles.max(), f_true_particles.max())
-        x_vals = np.linspace(x_min, x_max, 200)
-
-        # Estimate densities using KDE
-        kde_particles = gaussian_kde(f_particles)
-        kde_true_particles = gaussian_kde(f_true_particles)
-
-        # Plot KDE curves
-        plt.plot(x_vals, kde_particles(x_vals), label="Estimated Particles", linestyle="-", color="blue")
-        plt.plot(x_vals, kde_true_particles(x_vals), label="True Particles", linestyle="--", color="red")
-
-        # Formatting
-        plt.title(f'Density Estimation (KDE) at Step {step}')
-        plt.xlabel("Particle Value")
-        plt.ylabel("Density")
-        plt.legend()
-        plt.grid(True)
-
-        # Show plot
-        plt.show()
-
     def _phistar(self, particles):
+        """
+        Computes the update term for SVGD.
+        """
         kernel = self.kernel(particles)
         score = self.score(particles)
-        # minus due to the derivative regarding the second variable
-        grad_kernel = - 0.5 * torch.autograd.grad(kernel.sum(), particles)[0]
-        K_T = kernel.permute(*torch.arange(kernel.ndim - 1, -1, -1))
-        phi = (torch.matmul(K_T, score) + grad_kernel)/particles.shape[0]
+        grad_kernel = -0.5 * torch.autograd.grad(kernel.sum(), particles)[0]
+
+        K_T = kernel.permute(*torch.arange(kernel.ndimension() - 1, -1, -1))
+        phi = (torch.matmul(K_T, score) + grad_kernel) / particles.shape[0]
 
         return phi
 
@@ -165,6 +116,7 @@ class NCSN:
         """
         x_step = torch.randn(1000, d)
         x_hist = torch.zeros(self.L+1, *x_step.shape)
+        x_hist[0] = x_step
         with torch.no_grad():
             for i in range(self.L):
                 alpha_i = eps * self.sigma[i]**2 / self.sigma[-1]**2
