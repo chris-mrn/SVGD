@@ -31,6 +31,8 @@ class SVGD:
         h_scaled = h.detach().numpy() / np.log(self.n)
         D = squared_diff.sum(dim=2)  # Shape becomes [n, n]
 
+        h_scaled = 1
+
         return torch.exp(-D / h_scaled)
 
     def sample(self, P, n=1000, d=2):
@@ -41,6 +43,9 @@ class SVGD:
 
         optimizer = torch.optim.Adam([particles], lr=0.1)
         list_KL = []
+
+        x_hist = torch.zeros(self.n_iter+1, *particles.shape)
+        x_hist[0] = particles
 
         for i in range(self.n_iter):
             print(f'Iteration{i}')
@@ -54,11 +59,12 @@ class SVGD:
                 self.plot_kde(particles.squeeze(1), true_particles, i)
             KL = self.kl_divergence_kde(particles.unsqueeze(1), true_particles.unsqueeze(1))
             list_KL.append(KL.detach().numpy())
+            x_hist[i+1] = particles
 
         plt.plot(list_KL)
         plt.show()
 
-        return particles
+        return particles, x_hist
 
     def score(self, particles):
         log_prob = self.P.log_prob(particles)
@@ -158,15 +164,16 @@ class NCSN:
         - x_step: The generated clean sample after denoising.
         """
         x_step = torch.randn(1000, d)
-
+        x_hist = torch.zeros(self.L+1, *x_step.shape)
         with torch.no_grad():
             for i in range(self.L):
                 alpha_i = eps * self.sigma[i]**2 / self.sigma[-1]**2
                 for _ in range(T):
                     noise_level = (self.sigma[i * torch.ones(x_step.shape[0], dtype=int), None]).to(x_step.device)
                     x_step = x_step + alpha_i / 2 * self.model(x_step, noise_level) / noise_level + np.sqrt(alpha_i) * torch.randn_like(x_step, device=x_step.device)
+                x_hist[i+1] = x_step
 
-        return x_step
+        return x_step, x_hist
 
     def train(self, optimizer, epochs, data, print_interval=100):
         """
