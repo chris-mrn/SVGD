@@ -6,8 +6,10 @@ from torch.distributions.mixture_same_family import MixtureSameFamily
 from models import SVGD, NCSN, MLP2D
 from utils import kl_divergence_kde, plot_kde
 
-# Set device and dataset parameters
-device = 'mps'
+# Set device to GPU if available
+device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+
+# dataset
 means = torch.tensor([[-2., -3.], [5., 4.]])
 stds = torch.rand(2, 2)
 mix_param = torch.tensor([1, 0.8])
