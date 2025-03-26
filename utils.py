@@ -19,19 +19,16 @@ def kl_divergence_kde(p_samples, q_samples, bandwidth=0.1):
     return torch.mean(log_p - log_q)  # KL divergence
 
 
-def plot_kde(f_particles, f_extra_particles, f_true_particles, step, save_dir='Figures'):
+def plot_kde(f_particles, f_extra_particles, f_true_particles, step, x_min, x_max, y_min, y_max, save_dir='Figures'):
     """Plots the KDE estimation of given particles and saves the plot in the 'Figures' folder."""
 
-    # Convert PyTorch tensors to NumPy arrays
+    # Convert PyTorch tensors to NumPy arrays (not needed if already NumPy)
     f_particles = f_particles
     f_true_particles = f_true_particles
     f_extra_particles = f_extra_particles
 
-    # Define grid for KDE evaluation
-    x_min = min(f_particles.min(), f_true_particles.min(), f_extra_particles.min())
-    x_max = max(f_particles.max(), f_true_particles.max(), f_extra_particles.max())
+    # Define grid for KDE evaluation using the provided global min/max
     x_vals = np.linspace(x_min, x_max, 200)
-    print(type(f_particles))
 
     # Estimate densities using KDE
     kde_particles = gaussian_kde(f_particles)
@@ -49,6 +46,9 @@ def plot_kde(f_particles, f_extra_particles, f_true_particles, step, save_dir='F
     plt.ylabel("Density")
     plt.legend()
     plt.grid(True)
+
+    # Set consistent y-axis range
+    plt.ylim(y_min, y_max)
 
     # Create the 'Figures' directory if it does not exist
     os.makedirs(save_dir, exist_ok=True)

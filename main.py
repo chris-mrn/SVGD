@@ -6,6 +6,7 @@ from torch.distributions import Normal, Categorical, Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
 from models import SVGD, NCSN, MLP2D
 from utils import kl_divergence_kde, plot_kde
+from scipy.stats import gaussian_kde
 
 # Set device to GPU if available
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
@@ -86,8 +87,33 @@ plt.grid(True, linestyle="--", alpha=0.6)
 plt.savefig('Figures/KL_divergence_plot.png')
 plt.close()
 
+
 # Detach and plot KDE for every 10th iteration
 hist_SVGD = hist_SVGD.detach().numpy()
 hist_NCSN = hist_NCSN.detach().numpy()
+
+# Compute global min/max for consistent axis range across all plots
+all_particles = np.concatenate([
+    hist_SVGD.reshape(-1, 1),
+    hist_NCSN.reshape(-1, 1),
+    true_samples[:, 0].reshape(-1, 1)
+], axis=0)
+
+x_min, x_max = np.min(all_particles), np.max(all_particles)
+
+# Compute global y-axis range by evaluating densities at a common set of x-values
+x_vals_for_kde = np.linspace(x_min, x_max, 200)
+kde_particles = gaussian_kde(hist_SVGD.flatten())
+kde_true_particles = gaussian_kde(true_samples[:, 0])
+kde_extra_particles = gaussian_kde(hist_NCSN.flatten())
+
+y_vals_particles = kde_particles(x_vals_for_kde)
+y_vals_true_particles = kde_true_particles(x_vals_for_kde)
+y_vals_extra_particles = kde_extra_particles(x_vals_for_kde)
+
+y_min, y_max = min(np.min(y_vals_particles), np.min(y_vals_true_particles), np.min(y_vals_extra_particles)), \
+               max(np.max(y_vals_particles), np.max(y_vals_true_particles), np.max(y_vals_extra_particles))
+
+# Plot for every 10th iteration
 for i in range(0, hist_SVGD.shape[0], 10):
-    plot_kde(hist_SVGD[i, :, 0], hist_NCSN[i, :, 0], true_samples[:, 0], i)
+    plot_kde(hist_SVGD[i, :, 0], hist_NCSN[i, :, 0], true_samples[:, 0], i, x_min, x_max, y_min, y_max)
