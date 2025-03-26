@@ -10,3 +10,5 @@ By running `python main.py` in the terminal, several plots illustrating the part
   <img src="GIFs/Density_Evolution.gif" width="256" height="256" title="SVGD vs NCSN densities evolution">
 </p>
 
+
+Thanks to [nicolas-srjg](https://github.com/nicolas-srjg)  for implementing the NCSN class.
