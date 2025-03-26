@@ -11,4 +11,4 @@ By running `python main.py` in the terminal, several plots illustrating the part
 </p>
 
 
-Thanks to [nicolas-srjg](https://github.com/nicolas-srjg) for his NCSN class implementation that was taken from [Christopher Marouani. PGM Denoising via Score Matching. GitHub Repository, 2025.](https://github.com/chris-mrn/PGM_denoising_score_matching) .
+Thanks to [nicolas-srjg](https://github.com/nicolas-srjg) for his NCSN class implementation that was taken from [Christopher Marouani. PGM Denoising via Score Matching. GitHub Repository, 2025.](https://github.com/chris-mrn/PGM_denoising_score_matching) 
