@@ -27,7 +27,7 @@ class SVGD:
         h = torch.median(squared_diff)
         h_scaled = h / np.log(n)
 
-        return torch.exp(-D / h_scaled)
+        return torch.exp(-D /(2*h_scaled))
 
     def sample(self, P, n=250, d=2):
         """

@@ -1,6 +1,7 @@
 import os
 import torch
 import matplotlib.pyplot as plt
+import numpy as np
 from torch.distributions import Normal, Categorical, Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
 from models import SVGD, NCSN, MLP2D
@@ -41,15 +42,31 @@ gen_SVGD_samples = gen_SVGD_samples.detach().numpy()
 # Create 'Figures' directory if not exists
 os.makedirs('Figures', exist_ok=True)
 
+# Determine global axis limits based on true_samples, hist_NCSN, and hist_SVGD
+all_samples = np.concatenate([
+    true_samples,
+    hist_NCSN.reshape(-1, 2),
+    hist_SVGD.reshape(-1, 2).detach().numpy()
+], axis=0)
+
+x_min, x_max = np.min(all_samples[:, 0]), np.max(all_samples[:, 0])
+y_min, y_max = np.min(all_samples[:, 1]), np.max(all_samples[:, 1])
+
 # Save scatter plots for every 10th iteration
 for i in range(0, hist_SVGD.shape[0], 10):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 6))
     ax.scatter(true_samples[:, 0], true_samples[:, 1], alpha=0.5, marker='o', s=5)
     ax.scatter(hist_NCSN[i, :, 0], hist_NCSN[i, :, 1], alpha=0.5, marker='o', s=5)
     ax.scatter(hist_SVGD[i, :, 0].detach().numpy(), hist_SVGD[i, :, 1].detach().numpy(), alpha=0.5, marker='o', s=5)
+
+    # Set the same axis limits for each plot
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+
     ax.set_aspect('equal', adjustable='box')
     ax.set_title("True and generated samples")
     ax.legend(['True samples', 'NCSN samples', 'SVGD samples'])
+
     fig.savefig(f'Figures/plot_{i}.png')
     plt.close(fig)
 
