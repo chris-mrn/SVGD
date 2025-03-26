@@ -4,9 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from torch.distributions import Normal, Categorical, Independent
 from torch.distributions.mixture_same_family import MixtureSameFamily
-from models import SVGD, NCSN, MLP2D
-from utils import kl_divergence_kde, plot_kde
 from scipy.stats import gaussian_kde
+
+from models.SVGD import SVGD
+from models.NCSN import NCSN
+from models.utils import MLP2D
+from utils import kl_divergence_kde, plot_kde
+
 
 # Set device to GPU if available
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
