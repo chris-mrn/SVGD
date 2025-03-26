@@ -4,3 +4,11 @@ This repository provides a PyTorch implementation of Stein Variational Gradient 
 Additionally, it implements the Noise Conditional Score Network (NCSN).
 
 By running `python main.py` in the terminal, several plots illustrating the particle evolution will be generated and saved in the `Figures` folder, enabling comparisons between the methods.
+
+<p align="center">
+  <img src=« GIFs/Particles_Evolution.gif" width="256" height="256" title="SVGD vs NCSN particles evolution">
+</p>
+
+<p align="center">
+  <img src=« GIFs/Density_Evolution.gif" width="256" height="256" title="SVGD vs NCSN densities evolution">
+</p>
