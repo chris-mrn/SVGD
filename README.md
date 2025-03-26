@@ -7,9 +7,6 @@ By running `python main.py` in the terminal, several plots illustrating the part
 
 <p align="center">
   <img src="GIFs/Particles_Evolution.gif" width="256" height="256" title="SVGD vs NCSN particles evolution">
-</p>
-
-
-<p align="center">
   <img src="GIFs/Density_Evolution.gif" width="256" height="256" title="SVGD vs NCSN densities evolution">
 </p>
+
