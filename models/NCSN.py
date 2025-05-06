@@ -28,7 +28,7 @@ class NCSN:
 
         self.sigma = torch.tensor(self.sigma)  # Convert noise levels to tensor
 
-    def sample(self, n=1000, d=2, T=100, eps=2e-5):
+    def sample_from(self, X0, T=100, eps=2e-5):
         """
         Generates a sample by refining an initial noisy input using the learned score model.
 
@@ -40,7 +40,7 @@ class NCSN:
         Returns:
         - x_step: The generated clean sample after denoising.
         """
-        x_step = torch.randn(1000, d)
+        x_step = X0
         x_hist = torch.zeros(self.L+1, *x_step.shape)
         x_hist[0] = x_step
         with torch.no_grad():
@@ -64,6 +64,7 @@ class NCSN:
         - dataloader: DataLoader providing the training data.
         - print_interval: Frequency of loss printing.
         """
+        print("Training NCSN...")
         for epoch in range(epochs):
             total_loss = 0
 

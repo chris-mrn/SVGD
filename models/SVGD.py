@@ -27,7 +27,7 @@ class SVGD:
 
         return torch.exp(-D /(2*h_scaled))
 
-    def sample(self, P, n=250, d=2):
+    def sample(self, P, n=250, d=2, n_steps=10):
         """
         Samples from the distribution P using SVGD optimization.
         """
@@ -37,17 +37,21 @@ class SVGD:
 
         optimizer = torch.optim.Adam([particles], lr=0.1)
 
-        x_hist = torch.zeros(self.n_iter + 1, *particles.shape)
+        x_hist = torch.zeros(n_steps + 1, *particles.shape)
         x_hist[0] = particles
 
+        gap = self.n_iter // n_steps
+        c = 0
         for i in range(self.n_iter):
             print(f'Iteration {i}')
             optimizer.zero_grad()
             particles.grad = -self._phistar(particles)
             optimizer.step()
             particles.grad = None
+            if i % gap == 0:
+                c += 1
+                x_hist[c] = particles
 
-            x_hist[i + 1] = particles
 
         return particles, x_hist
 
